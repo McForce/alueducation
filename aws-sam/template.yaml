@@ -1,0 +1,194 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Student Enrolment Integration - API Gateway + Lambda + DynamoDB
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Parameters
+# ─────────────────────────────────────────────────────────────────────────────
+Parameters:
+  Stage:
+    Type: String
+    Default: dev
+    AllowedValues: [dev, staging, prod]
+    Description: Deployment stage — controls resource naming and log verbosity.
+
+  SalesforceInstanceUrl:
+    Type: String
+    Description: Your Salesforce Dev org My Domain URL
+    Default: https://your-org.my.salesforce.com
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Globals — applied to every Lambda function unless overridden
+# ─────────────────────────────────────────────────────────────────────────────
+Globals:
+  Function:
+    Runtime: nodejs20.x
+    Timeout: 10
+    MemorySize: 256
+    Environment:
+      Variables:
+        STAGE: !Ref Stage
+        IDEMPOTENCY_TABLE: !Ref IdempotencyTable
+        SF_INSTANCE_URL: !Ref SalesforceInstanceUrl
+        SF_JWT_SECRET_ARN: !Ref SalesforceJwtSecret
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Resources
+# ─────────────────────────────────────────────────────────────────────────────
+Resources:
+
+  # ── DynamoDB — idempotency store ──────────────────────────────────────────
+  IdempotencyTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: idempotencyKey
+          AttributeType: S
+      KeySchema:
+        - AttributeName: idempotencyKey
+          KeyType: HASH
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+      Tags:
+        - Key: Stage
+          Value: !Ref Stage
+        - Key: Project
+          Value: student-enrolment
+
+  # ── Secrets Manager — Salesforce JWT private key ──────────────────────────
+  SalesforceJwtSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Sub '${AWS::StackName}-sf-jwt-key'
+      Description: Private key for Salesforce JWT Bearer auth
+      SecretString: '{"privateKey":"REPLACE_AFTER_DEPLOY","clientId":"REPLACE_AFTER_DEPLOY","username":"REPLACE_AFTER_DEPLOY"}'
+
+  # ── CloudWatch Log Groups — explicit so retention is enforced ─────────────
+  CreateEnrolmentLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${AWS::StackName}-create-enrolment'
+      RetentionInDays: 30
+
+  UpdateEnrolmentLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${AWS::StackName}-update-enrolment'
+      RetentionInDays: 30
+
+  # ── API Gateway — backed by the OpenAPI spec ──────────────────────────────
+  EnrolmentApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: !Ref Stage
+      DefinitionBody:
+        Fn::Transform:
+          Name: AWS::Include
+          Parameters:
+            Location: ../openapi/student-enrolment-api.yaml
+      Auth:
+        DefaultAuthorizer: NONE  # Tighten to OAuth2 in a later hardening pass
+      AccessLogSetting:
+        DestinationArn: !GetAtt EnrolmentApiLogGroup.Arn
+        Format: '{"requestId":"$context.requestId","correlationId":"$context.httpMethod","ip":"$context.identity.sourceIp","stage":"$context.stage","method":"$context.httpMethod","path":"$context.resourcePath","status":"$context.status","latency":"$context.responseLatency"}'
+      Tags:
+        Stage: !Ref Stage
+        Project: student-enrolment
+
+  EnrolmentApiLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/apigateway/${AWS::StackName}-enrolment-api'
+      RetentionInDays: 30
+
+  # ── Lambda — POST /enrolments ─────────────────────────────────────────────
+  CreateEnrolmentFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-create-enrolment'
+      CodeUri: src/create-enrolment/
+      Handler: index.handler
+      Description: Validates and persists a new student enrolment from Salesforce.
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref IdempotencyTable
+      LoggingConfig:
+        LogGroup: !Ref CreateEnrolmentLogGroup
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            RestApiId: !Ref EnrolmentApi
+            Path: /enrolments
+            Method: POST
+
+  # ── Lambda — GET /enrolments/{id} ─────────────────────────────────────────
+  GetEnrolmentFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-get-enrolment'
+      CodeUri: src/get-enrolment/
+      Handler: index.handler
+      Description: Retrieves a single enrolment record by ID from DynamoDB.
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref IdempotencyTable
+      LoggingConfig:
+        LogGroup: !Ref GetEnrolmentLogGroup
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            RestApiId: !Ref EnrolmentApi
+            Path: /enrolments/{id}
+            Method: GET
+
+  GetEnrolmentLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${AWS::StackName}-get-enrolment'
+      RetentionInDays: 30
+
+  # ── Lambda — PATCH /enrolments/{id} ──────────────────────────────────────
+  UpdateEnrolmentFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-update-enrolment'
+      CodeUri: src/update-enrolment/
+      Handler: index.handler
+      Description: Updates enrolment status and pushes the change back to Salesforce via JWT Bearer.
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref IdempotencyTable
+        - Statement:
+            - Effect: Allow
+              Action:
+                - secretsmanager:GetSecretValue
+              Resource: !Ref SalesforceJwtSecret
+      LoggingConfig:
+        LogGroup: !Ref UpdateEnrolmentLogGroup
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            RestApiId: !Ref EnrolmentApi
+            Path: /enrolments/{id}
+            Method: PATCH
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Outputs
+# ─────────────────────────────────────────────────────────────────────────────
+Outputs:
+  ApiUrl:
+    Description: Base URL for the enrolment API
+    Value: !Sub 'https://${EnrolmentApi}.execute-api.${AWS::Region}.amazonaws.com/${Stage}'
+
+  IdempotencyTableName:
+    Description: DynamoDB table name for idempotency records
+    Value: !Ref IdempotencyTable
+
+  SalesforceJwtSecretArn:
+    Description: ARN of the Secrets Manager secret holding the Salesforce JWT key
+    Value: !Ref SalesforceJwtSecret
