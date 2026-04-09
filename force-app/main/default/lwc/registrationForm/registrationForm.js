@@ -85,6 +85,15 @@ export default class RegistrationForm extends LightningElement {
     }
 
     async handleSubmit() {
+        const allValid = [
+            ...this.template.querySelectorAll('lightning-input, lightning-combobox, lightning-radio-group')
+        ].reduce((valid, field) => {
+            field.reportValidity();
+            return valid && field.checkValidity();
+        }, true);
+
+        if (!allValid) return;
+
         this.isSubmitting = true;
 
         try {
