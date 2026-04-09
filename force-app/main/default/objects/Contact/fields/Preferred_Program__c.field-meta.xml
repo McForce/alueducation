@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Preferred_Program__c</fullName>
+    <label>Preferred Program</label>
+    <required>false</required>
+    <trackFeedHistory>false</trackFeedHistory>
+    <type>Picklist</type>
+    <valueSet>
+        <restricted>true</restricted>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value>
+                <fullName>BSc (Hons) Entrepreneurship Leadership</fullName>
+                <default>false</default>
+                <label>BSc (Hons) Entrepreneurship Leadership</label>
+            </value>
+            <value>
+                <fullName>BSc (Hons) International Business and Trade</fullName>
+                <default>false</default>
+                <label>BSc (Hons) International Business and Trade</label>
+            </value>
+            <value>
+                <fullName>BSc (Hons) Software Engineering</fullName>
+                <default>false</default>
+                <label>BSc (Hons) Software Engineering</label>
+            </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>

@@ -1,0 +1,173 @@
+<template>
+    <div class="slds-p-around_large">
+
+        <p class="slds-text-body_regular slds-m-bottom_medium">
+            Register to create an account and begin your journey
+        </p>
+
+        <!-- ── Personal & Account Information ─────────────────────────── -->
+        <h2 class="slds-text-heading_medium slds-m-vertical_medium">Personal &amp; Account Information</h2>
+
+        <lightning-layout multiple-rows="true">
+
+            <lightning-layout-item size="6" padding="around-small">
+                <lightning-input label="First Name"
+                    onchange={handleChange} data-field="firstName"></lightning-input>
+            </lightning-layout-item>
+
+            <lightning-layout-item size="6" padding="around-small">
+                <lightning-input label="Middle Name"
+                    onchange={handleChange} data-field="middleName"></lightning-input>
+            </lightning-layout-item>
+
+            <lightning-layout-item size="6" padding="around-small">
+                <lightning-input label="Last Name"
+                    onchange={handleChange} data-field="lastName"></lightning-input>
+            </lightning-layout-item>
+
+            <lightning-layout-item size="6" padding="around-small">
+                <lightning-input label="Email" type="email"
+                    onchange={handleChange} data-field="email"></lightning-input>
+            </lightning-layout-item>
+
+            <lightning-layout-item size="6" padding="around-small">
+                <lightning-input label="Date of Birth" type="date"
+                    onchange={handleChange} data-field="dateOfBirth"></lightning-input>
+            </lightning-layout-item>
+
+            <lightning-layout-item size="6" padding="around-small">
+                <lightning-combobox label="Sex" options={sexOptions}
+                    onchange={handleChange} data-field="sex"></lightning-combobox>
+            </lightning-layout-item>
+
+            <lightning-layout-item size="6" padding="around-small">
+                <lightning-input label="City of Residence"
+                    onchange={handleChange} data-field="cityOfResidence"></lightning-input>
+            </lightning-layout-item>
+
+            <lightning-layout-item size="6" padding="around-small">
+                <lightning-combobox label="Nationality" options={countryOptions}
+                    onchange={handleChange} data-field="nationality"></lightning-combobox>
+            </lightning-layout-item>
+
+            <lightning-layout-item size="6" padding="around-small">
+                <lightning-combobox label="Country of Residence" options={countryOptions}
+                    onchange={handleChange} data-field="countryOfResidence"></lightning-combobox>
+            </lightning-layout-item>
+
+            <lightning-layout-item size="6" padding="around-small">
+                <lightning-input label="Phone Number" type="tel"
+                    onchange={handleChange} data-field="phone"></lightning-input>
+            </lightning-layout-item>
+
+            <lightning-layout-item size="12" padding="around-small">
+                <lightning-radio-group label="Is this your WhatsApp number?"
+                    options={yesNoOptions} type="radio"
+                    onchange={handleChange} data-field="isWhatsApp"></lightning-radio-group>
+            </lightning-layout-item>
+
+        </lightning-layout>
+
+        <!-- ── Academic Information ────────────────────────────────────── -->
+        <h2 class="slds-text-heading_medium slds-m-vertical_medium">Academic Information</h2>
+
+        <lightning-layout multiple-rows="true">
+
+            <lightning-layout-item size="12" padding="around-small">
+                <lightning-combobox label="What country did you attend high school in?"
+                    options={countryOptions}
+                    onchange={handleChange} data-field="highSchoolCountry"></lightning-combobox>
+            </lightning-layout-item>
+
+            <lightning-layout-item size="12" padding="around-small">
+                <lightning-combobox label="Pick your high school from this list"
+                    options={highSchoolOptions}
+                    onchange={handleHighSchoolChange} data-field="highSchool"></lightning-combobox>
+            </lightning-layout-item>
+
+            <template if:true={showHighSchoolFields}>
+                <lightning-layout-item size="6" padding="around-small">
+                    <lightning-input label="What city is your high school in?"
+                        onchange={handleChange} data-field="highSchoolCity"></lightning-input>
+                </lightning-layout-item>
+
+                <lightning-layout-item size="6" padding="around-small">
+                    <lightning-input label="Name of the high school"
+                        onchange={handleChange} data-field="highSchoolName"></lightning-input>
+                </lightning-layout-item>
+            </template>
+
+        </lightning-layout>
+
+        <!-- ── ALU Information ─────────────────────────────────────────── -->
+        <h2 class="slds-text-heading_medium slds-m-vertical_medium">ALU Information</h2>
+
+        <lightning-layout multiple-rows="true">
+
+            <lightning-layout-item size="6" padding="around-small">
+                <lightning-combobox label="What is your preferred intake?"
+                    options={intakeOptions}
+                    onchange={handleChange} data-field="preferredIntake"></lightning-combobox>
+            </lightning-layout-item>
+
+            <lightning-layout-item size="6" padding="around-small">
+                <lightning-combobox label="What is your preferred programme?"
+                    options={programmeOptions}
+                    onchange={handleChange} data-field="preferredProgram"></lightning-combobox>
+            </lightning-layout-item>
+
+            <lightning-layout-item size="12" padding="around-small">
+                <lightning-combobox label="How did you hear about us?"
+                    options={hearAboutUsOptions}
+                    onchange={handleChange} data-field="howDidYouHearAboutUs"></lightning-combobox>
+            </lightning-layout-item>
+
+        </lightning-layout>
+
+        <!-- ── Consent & Agreements ────────────────────────────────────── -->
+        <div class="slds-m-top_medium">
+
+            <div class="slds-m-bottom_medium">
+                <lightning-radio-group
+                    label="I recognise that ALU's fee structure varies across its programmes"
+                    options={yesNoOptions} type="radio"
+                    onchange={handleChange} data-field="feeStructureAcknowledged"></lightning-radio-group>
+            </div>
+
+            <div class="slds-m-bottom_medium">
+                <lightning-radio-group
+                    label="I have read and agree with ALU's Privacy Policy"
+                    options={yesNoOptions} type="radio"
+                    onchange={handleChange} data-field="privacyPolicyAgreed"></lightning-radio-group>
+            </div>
+
+            <div class="slds-m-bottom_medium">
+                <lightning-radio-group
+                    label="Stay connected with ALU and be the first to know about upcoming events, news, and special offers using the communication channels shared above"
+                    options={marketingOptions} type="radio"
+                    onchange={handleChange} data-field="marketingOptIn"></lightning-radio-group>
+            </div>
+
+            <div class="slds-m-bottom_medium">
+                <lightning-input
+                    label="I consent to the processing of my personal data per the privacy policy"
+                    type="checkbox"
+                    onchange={handleChange} data-field="consentGiven"></lightning-input>
+            </div>
+
+        </div>
+
+        <!-- ── Submit ──────────────────────────────────────────────────── -->
+        <div class="slds-m-top_large">
+            <lightning-button label="Register" variant="brand"
+                onclick={handleSubmit} disabled={isSubmitting}></lightning-button>
+        </div>
+
+        <template if:true={success}>
+            <div class="slds-notify slds-notify_alert slds-alert_success slds-m-top_medium">
+                Registration successful. Reference: {correlationId}
+            </div>
+        </template>
+
+    </div>
+</template>
