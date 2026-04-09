@@ -1,0 +1,13 @@
+{
+  "name": "create-enrolment",
+  "version": "1.0.0",
+  "description": "Lambda handler for POST /enrolments",
+  "main": "index.js",
+  "scripts": {
+    "test": "node --test index.test.js"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.0.0",
+    "@aws-sdk/lib-dynamodb": "^3.0.0"
+  }
+}
