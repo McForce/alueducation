@@ -1,0 +1,574 @@
+openapi: 3.0.3
+
+info:
+  title: Student Enrolment API
+  version: 1.0.0
+  description: |
+    Governed integration contract for student enrolment data between
+    Salesforce and downstream systems at EduTechCo.
+
+    ## Overview
+    This API accepts new student registrations from the Salesforce LWC
+    registration form, persists them in DynamoDB via AWS Lambda, and
+    supports reverse-flow status updates back to Salesforce.
+
+    ## Authentication
+    All endpoints require an OAuth 2.0 client credentials token issued
+    by the EduTechCo authorisation server.
+
+    ## Idempotency
+    POST and PATCH requests must include an `Idempotency-Key` header
+    (UUID v4). Duplicate keys within 24 hours return the original
+    response with HTTP 200 rather than creating a second record.
+
+    ## Correlation IDs
+    Pass `X-Correlation-Id` on every request. The same ID is forwarded
+    to CloudWatch Logs, DynamoDB, and back to Salesforce so a single
+    string can stitch the full trace.
+  contact:
+    name: Platform Engineering
+    email: platform@edutechco.com
+
+servers:
+  - url: https://api.edutechco.com/v1
+    description: Production
+  - url: https://api-dev.edutechco.com/v1
+    description: Development
+
+security:
+  - OAuth2: [enrolments:write, enrolments:read]
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Paths
+# ─────────────────────────────────────────────────────────────────────────────
+paths:
+
+  /enrolments:
+    post:
+      summary: Create a new enrolment
+      description: |
+        Accepts a student registration payload originating from the
+        Salesforce LWC form. Creates a Contact in Salesforce (via the
+        Platform Event flow) and persists the record in DynamoDB.
+        Returns the canonical Enrolment object including the system-
+        assigned `id` and initial `status` of `pending`.
+      operationId: createEnrolment
+      tags:
+        - Enrolments
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CorrelationId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnrolmentRequest'
+            examples:
+              minimal:
+                summary: Minimum required fields
+                value:
+                  firstName: Jane
+                  lastName: Doe
+                  email: jane.doe@example.com
+                  dateOfBirth: "2000-03-15"
+                  consentGiven: true
+                  correlationId: "a1b2c3d4-0000-4000-a000-000000000001"
+              full:
+                summary: All fields populated
+                value:
+                  firstName: Jane
+                  middleName: Marie
+                  lastName: Doe
+                  email: jane.doe@example.com
+                  dateOfBirth: "2000-03-15"
+                  sex: Female
+                  cityOfResidence: Kigali
+                  countryOfResidence: Rwanda
+                  nationality: Rwanda
+                  phone: "+250700000000"
+                  isWhatsApp: true
+                  highSchoolCountry: Rwanda
+                  highSchool: Green Hills Academy
+                  highSchoolCity: Kigali
+                  highSchoolName: Green Hills Academy
+                  preferredIntake: September 2026
+                  preferredProgram: BSc (Hons) Software Engineering
+                  howDidYouHearAboutUs: Social Media
+                  consentGiven: true
+                  feeStructureAcknowledged: true
+                  privacyPolicyAgreed: true
+                  marketingOptIn: true
+                  correlationId: "a1b2c3d4-0000-4000-a000-000000000002"
+      responses:
+        '201':
+          description: Enrolment created successfully
+          headers:
+            X-Correlation-Id:
+              description: Echoed correlation ID for tracing
+              schema:
+                type: string
+                format: uuid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Enrolment'
+              example:
+                id: "stu_7f3a1b2c-d4e5-4f60-a700-b8c9d0e1f234"
+                firstName: Jane
+                lastName: Doe
+                email: jane.doe@example.com
+                dateOfBirth: "2000-03-15"
+                consentGiven: true
+                correlationId: "a1b2c3d4-0000-4000-a000-000000000001"
+                status: pending
+                createdAt: "2026-04-09T08:00:00Z"
+                updatedAt: "2026-04-09T08:00:00Z"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /enrolments/{id}:
+    get:
+      summary: Retrieve an enrolment by ID
+      description: Returns the full Enrolment object for the given system ID.
+      operationId: getEnrolment
+      tags:
+        - Enrolments
+      parameters:
+        - $ref: '#/components/parameters/EnrolmentId'
+        - $ref: '#/components/parameters/CorrelationId'
+      responses:
+        '200':
+          description: Enrolment found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Enrolment'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    patch:
+      summary: Update an enrolment
+      description: |
+        Partial update of an enrolment record. Typically used by the
+        downstream admissions system to push a status change back to
+        Salesforce via the reverse flow.
+      operationId: updateEnrolment
+      tags:
+        - Enrolments
+      parameters:
+        - $ref: '#/components/parameters/EnrolmentId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CorrelationId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnrolmentUpdate'
+            examples:
+              statusUpdate:
+                summary: Approve a student
+                value:
+                  status: accepted
+                  notes: All documents verified. Offer letter sent.
+      responses:
+        '200':
+          description: Enrolment updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Enrolment'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Components
+# ─────────────────────────────────────────────────────────────────────────────
+components:
+
+  # ── Security ──────────────────────────────────────────────────────────────
+  securitySchemes:
+    OAuth2:
+      type: oauth2
+      flows:
+        clientCredentials:
+          tokenUrl: https://auth.edutechco.com/oauth/token
+          scopes:
+            enrolments:read: Read enrolment data
+            enrolments:write: Create and update enrolments
+
+  # ── Reusable Parameters ───────────────────────────────────────────────────
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: |
+        UUID v4 unique to this request. Duplicate submissions within 24 hours
+        return the original response without creating a new record.
+      schema:
+        type: string
+        format: uuid
+        example: "c3d4e5f6-0001-4001-b001-000000000099"
+
+    CorrelationId:
+      name: X-Correlation-Id
+      in: header
+      required: false
+      description: |
+        UUID v4 propagated through all systems (Salesforce → Lambda →
+        DynamoDB → CloudWatch). Used for end-to-end tracing.
+      schema:
+        type: string
+        format: uuid
+        example: "a1b2c3d4-0000-4000-a000-000000000001"
+
+    EnrolmentId:
+      name: id
+      in: path
+      required: true
+      description: System-assigned enrolment identifier returned on creation.
+      schema:
+        type: string
+        example: "stu_7f3a1b2c-d4e5-4f60-a700-b8c9d0e1f234"
+
+  # ── Schemas ───────────────────────────────────────────────────────────────
+  schemas:
+
+    EnrolmentRequest:
+      type: object
+      description: Payload submitted when a student registers via the LWC form.
+      required:
+        - firstName
+        - lastName
+        - email
+        - dateOfBirth
+        - consentGiven
+      properties:
+
+        # Personal information
+        firstName:
+          type: string
+          maxLength: 40
+          description: Student's legal first name.
+          example: Jane
+
+        middleName:
+          type: string
+          maxLength: 40
+          description: Student's middle name (optional).
+          example: Marie
+
+        lastName:
+          type: string
+          maxLength: 80
+          description: Student's legal last name.
+          example: Doe
+
+        email:
+          type: string
+          format: email
+          maxLength: 80
+          description: Primary email — used as the portal login.
+          example: jane.doe@example.com
+
+        dateOfBirth:
+          type: string
+          format: date
+          description: ISO 8601 date. Applicant must be at least 16 years old.
+          example: "2000-03-15"
+
+        sex:
+          type: string
+          enum: [Male, Female, "Prefer not to say"]
+          description: Student's self-reported sex.
+          example: Female
+
+        cityOfResidence:
+          type: string
+          maxLength: 100
+          description: City where the student currently lives.
+          example: Kigali
+
+        countryOfResidence:
+          type: string
+          maxLength: 80
+          description: Country where the student currently lives.
+          example: Rwanda
+
+        nationality:
+          type: string
+          maxLength: 80
+          description: Student's nationality.
+          example: Rwanda
+
+        phone:
+          type: string
+          maxLength: 40
+          description: Phone number in E.164 format.
+          example: "+250700000000"
+
+        isWhatsApp:
+          type: boolean
+          description: Whether the phone number is also a WhatsApp number.
+          example: true
+
+        # Academic information
+        highSchoolCountry:
+          type: string
+          maxLength: 80
+          description: Country where the student attended high school.
+          example: Rwanda
+
+        highSchool:
+          type: string
+          maxLength: 255
+          description: Name of the high school selected from the list, or "Not Listed".
+          example: Green Hills Academy
+
+        highSchoolCity:
+          type: string
+          maxLength: 100
+          description: City of the high school (required when highSchool is "Not Listed").
+          example: Kigali
+
+        highSchoolName:
+          type: string
+          maxLength: 255
+          description: Full name of the high school (required when highSchool is "Not Listed").
+          example: Green Hills Academy
+
+        # ALU information
+        preferredIntake:
+          type: string
+          maxLength: 50
+          description: The intake period the student wishes to enrol in.
+          example: September 2026
+
+        preferredProgram:
+          type: string
+          enum:
+            - "BSc (Hons) Entrepreneurship Leadership"
+            - "BSc (Hons) International Business and Trade"
+            - "BSc (Hons) Software Engineering"
+          description: Programme the student is applying for.
+          example: "BSc (Hons) Software Engineering"
+
+        howDidYouHearAboutUs:
+          type: string
+          maxLength: 100
+          description: Referral source for marketing attribution.
+          example: Social Media
+
+        # Consent & agreements
+        consentGiven:
+          type: boolean
+          description: Consent to processing of personal data per the privacy policy.
+          example: true
+
+        feeStructureAcknowledged:
+          type: boolean
+          description: Acknowledgement that ALU fee structure varies across programmes.
+          example: true
+
+        privacyPolicyAgreed:
+          type: boolean
+          description: Agreement to ALU's Privacy Policy.
+          example: true
+
+        marketingOptIn:
+          type: boolean
+          description: Opt-in to receive ALU news and offers via provided channels.
+          example: true
+
+        correlationId:
+          type: string
+          format: uuid
+          description: |
+            UUID generated by Salesforce and forwarded here. Stitches the
+            Salesforce Contact record to this API call and the DynamoDB entry.
+          example: "a1b2c3d4-0000-4000-a000-000000000001"
+
+    Enrolment:
+      description: |
+        Full enrolment record returned after creation or retrieval.
+        Extends EnrolmentRequest with system-managed fields.
+      allOf:
+        - $ref: '#/components/schemas/EnrolmentRequest'
+        - type: object
+          required:
+            - id
+            - status
+            - createdAt
+            - updatedAt
+          properties:
+            id:
+              type: string
+              description: System-assigned unique identifier for the enrolment.
+              example: "stu_7f3a1b2c-d4e5-4f60-a700-b8c9d0e1f234"
+
+            status:
+              type: string
+              enum: [pending, submitted, accepted, rejected]
+              description: Current state of the enrolment in the admissions pipeline.
+              example: pending
+
+            createdAt:
+              type: string
+              format: date-time
+              description: ISO 8601 timestamp of record creation (UTC).
+              example: "2026-04-09T08:00:00Z"
+
+            updatedAt:
+              type: string
+              format: date-time
+              description: ISO 8601 timestamp of last update (UTC).
+              example: "2026-04-09T08:00:00Z"
+
+    EnrolmentUpdate:
+      type: object
+      description: |
+        Partial update payload. Used by the admissions system to push a
+        status change back to Salesforce via the reverse flow.
+      minProperties: 1
+      properties:
+        status:
+          type: string
+          enum: [pending, submitted, accepted, rejected]
+          description: New status for the enrolment.
+          example: accepted
+
+        notes:
+          type: string
+          maxLength: 1000
+          description: Free-text notes from the admissions reviewer.
+          example: All documents verified. Offer letter sent.
+
+    Problem:
+      type: object
+      description: RFC 7807 Problem Details object returned on all error responses.
+      properties:
+        type:
+          type: string
+          format: uri
+          description: URI identifying the problem type.
+          example: "https://api.edutechco.com/problems/validation-error"
+
+        title:
+          type: string
+          description: Short, human-readable summary of the problem type.
+          example: Validation Error
+
+        status:
+          type: integer
+          description: HTTP status code.
+          example: 400
+
+        detail:
+          type: string
+          description: Human-readable explanation specific to this occurrence.
+          example: "email: must be a valid email address"
+
+        instance:
+          type: string
+          description: URI reference identifying the specific occurrence.
+          example: "/enrolments/requests/abc123"
+
+        correlationId:
+          type: string
+          format: uuid
+          description: Correlation ID from the request for tracing.
+          example: "a1b2c3d4-0000-4000-a000-000000000001"
+
+  # ── Reusable Responses ────────────────────────────────────────────────────
+  responses:
+
+    BadRequest:
+      description: Validation error — one or more request fields are invalid.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          example:
+            type: "https://api.edutechco.com/problems/validation-error"
+            title: Validation Error
+            status: 400
+            detail: "email: must be a valid email address"
+            correlationId: "a1b2c3d4-0000-4000-a000-000000000001"
+
+    NotFound:
+      description: The requested enrolment does not exist.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          example:
+            type: "https://api.edutechco.com/problems/not-found"
+            title: Not Found
+            status: 404
+            detail: "No enrolment found with id stu_7f3a1b2c"
+            correlationId: "a1b2c3d4-0000-4000-a000-000000000001"
+
+    Conflict:
+      description: Idempotency key conflict — a request with this key already exists.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          example:
+            type: "https://api.edutechco.com/problems/conflict"
+            title: Conflict
+            status: 409
+            detail: "Idempotency key c3d4e5f6-0001-4001-b001-000000000099 was already used"
+            correlationId: "a1b2c3d4-0000-4000-a000-000000000001"
+
+    TooManyRequests:
+      description: Rate limit exceeded.
+      headers:
+        Retry-After:
+          description: Number of seconds to wait before retrying.
+          schema:
+            type: integer
+            example: 30
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          example:
+            type: "https://api.edutechco.com/problems/rate-limit-exceeded"
+            title: Too Many Requests
+            status: 429
+            detail: Rate limit of 100 requests per minute exceeded.
+            correlationId: "a1b2c3d4-0000-4000-a000-000000000001"
+
+    InternalServerError:
+      description: Unexpected server error.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          example:
+            type: "https://api.edutechco.com/problems/internal-error"
+            title: Internal Server Error
+            status: 500
+            detail: An unexpected error occurred. Please retry or contact support.
+            correlationId: "a1b2c3d4-0000-4000-a000-000000000001"
