@@ -4,7 +4,7 @@ import registerStudent from '@salesforce/apex/RegistrationController.registerStu
 
 export default class RegistrationForm extends LightningElement {
 
-    @track form = {};
+    @track formData = {};
     @track isSubmitting = false;
     @track success = false;
     @track correlationId;
@@ -18,7 +18,7 @@ export default class RegistrationForm extends LightningElement {
     ];
 
     marketingOptions = [
-        { label: "Yes, I want to receive ALU's latest news and offers.",          value: 'true' },
+        { label: "Yes, I want to receive ALU's latest news and offers.",            value: 'true' },
         { label: "No, I do not want to benefit from ALU's latest news and offers.", value: 'false' }
     ];
 
@@ -28,7 +28,6 @@ export default class RegistrationForm extends LightningElement {
         { label: 'Prefer not to say', value: 'Prefer not to say' }
     ];
 
-    // Trimmed — populate with full ISO country list in real build
     countryOptions = [
         { label: 'Rwanda',       value: 'Rwanda' },
         { label: 'South Africa', value: 'South Africa' },
@@ -38,53 +37,56 @@ export default class RegistrationForm extends LightningElement {
     ];
 
     highSchoolOptions = [
-        { label: 'Not Listed',           value: 'Not Listed' },
-        { label: 'Green Hills Academy',  value: 'Green Hills Academy' },
-        { label: 'Lycée de Kigali',      value: 'Lycée de Kigali' },
-        { label: 'Saint Andrew\'s',      value: 'Saint Andrew\'s' }
+        { label: 'Not Listed',          value: 'Not Listed' },
+        { label: 'Green Hills Academy', value: 'Green Hills Academy' },
+        { label: 'Lycée de Kigali',     value: 'Lycée de Kigali' },
+        { label: "Saint Andrew's",      value: "Saint Andrew's" }
     ];
 
     intakeOptions = [
-        { label: 'January 2026', value: 'January 2026' },
+        { label: 'January 2026',   value: 'January 2026' },
         { label: 'September 2026', value: 'September 2026' }
     ];
 
     programmeOptions = [
-        { label: 'BSc (Hons) Entrepreneurship Leadership',   value: 'BSc (Hons) Entrepreneurship Leadership' },
+        { label: 'BSc (Hons) Entrepreneurship Leadership',      value: 'BSc (Hons) Entrepreneurship Leadership' },
         { label: 'BSc (Hons) International Business and Trade', value: 'BSc (Hons) International Business and Trade' },
-        { label: 'BSc (Hons) Software Engineering',          value: 'BSc (Hons) Software Engineering' }
+        { label: 'BSc (Hons) Software Engineering',             value: 'BSc (Hons) Software Engineering' }
     ];
 
     hearAboutUsOptions = [
-        { label: 'Social Media',        value: 'Social Media' },
-        { label: 'Friend or Family',    value: 'Friend or Family' },
-        { label: 'School Counsellor',   value: 'School Counsellor' },
-        { label: 'ALU Event',           value: 'ALU Event' },
-        { label: 'Online Search',       value: 'Online Search' },
-        { label: 'Other',               value: 'Other' }
+        { label: 'Social Media',      value: 'Social Media' },
+        { label: 'Friend or Family',  value: 'Friend or Family' },
+        { label: 'School Counsellor', value: 'School Counsellor' },
+        { label: 'ALU Event',         value: 'ALU Event' },
+        { label: 'Online Search',     value: 'Online Search' },
+        { label: 'Other',             value: 'Other' }
     ];
 
     // ── Event handlers ──────────────────────────────────────────────────
 
+    // Track every field change using event.target (more reliable than
+    // event.currentTarget across LWC shadow DOM boundaries)
     handleChange(event) {
-        const field = event.currentTarget.dataset.field;
-        // event.detail.checked is only present for checkbox inputs
-        const value = (event.detail.checked !== undefined)
+        const field = event.target.dataset.field;
+        if (!field) return;
+        const value = event.detail.checked !== undefined
             ? String(event.detail.checked)
             : event.detail.value;
-        this.form = { ...this.form, [field]: value };
+        this.formData = { ...this.formData, [field]: value };
     }
 
     handleHighSchoolChange(event) {
-        const selected = event.currentTarget.value;
+        const selected = event.detail.value;
         this.showHighSchoolFields = selected === 'Not Listed';
-        this.form = { ...this.form, highSchool: selected };
+        this.formData = { ...this.formData, highSchool: selected };
         if (!this.showHighSchoolFields) {
-            this.form = { ...this.form, highSchoolCity: null, highSchoolName: null };
+            this.formData = { ...this.formData, highSchoolCity: null, highSchoolName: null };
         }
     }
 
     async handleSubmit() {
+        // Validate all fields first
         const allValid = [
             ...this.template.querySelectorAll('lightning-input, lightning-combobox, lightning-radio-group')
         ].reduce((valid, field) => {
@@ -97,8 +99,8 @@ export default class RegistrationForm extends LightningElement {
         this.isSubmitting = true;
 
         try {
-            const res = await registerStudent({ req: this.form });
-            this.success = true;
+            const res = await registerStudent({ req: this.formData });
+            this.success       = true;
             this.correlationId = res.correlationId;
             this.dispatchEvent(new ShowToastEvent({
                 title:   'Registration successful',
@@ -115,5 +117,4 @@ export default class RegistrationForm extends LightningElement {
             this.isSubmitting = false;
         }
     }
-
 }

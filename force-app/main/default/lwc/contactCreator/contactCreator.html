@@ -1,0 +1,120 @@
+<template>
+    <lightning-record-edit-form object-api-name="Contact" onsuccess={handleSuccess}>
+        <div class="registration-container">
+            <h1 class="page-title">Registration</h1>
+            <p class="page-subtitle">Register to create an account and begin your journey</p>
+
+            <div class="notice-banner">
+                <strong>Please note:</strong> You will use your email address to sign into the portal after registering.
+            </div>
+
+            <div class="section-header">
+                <h2>Personal &amp; Account Information</h2>
+                <hr/>
+            </div>
+
+            <lightning-layout multiple-rows="true" pull-to-boundary="small">
+                <lightning-layout-item size="12" medium-device-size="6" padding="horizontal-small" class="slds-p-vertical_x-small">
+                    <lightning-input-field field-name="FirstName" required></lightning-input-field>
+                </lightning-layout-item>
+                <lightning-layout-item size="12" medium-device-size="6" padding="horizontal-small" class="slds-p-vertical_x-small">
+                    <lightning-input-field field-name="Middle_Name__c"></lightning-input-field>
+                </lightning-layout-item>
+
+                <lightning-layout-item size="12" medium-device-size="6" padding="horizontal-small" class="slds-p-vertical_x-small">
+                    <lightning-input-field field-name="LastName" required></lightning-input-field>
+                </lightning-layout-item>
+                <lightning-layout-item size="12" medium-device-size="6" padding="horizontal-small" class="slds-p-vertical_x-small">
+                    <lightning-input-field field-name="Email" required></lightning-input-field>
+                </lightning-layout-item>
+
+                <lightning-layout-item size="12" medium-device-size="6" padding="horizontal-small" class="slds-p-vertical_x-small">
+                    <lightning-input-field field-name="Birthdate" required></lightning-input-field>
+                </lightning-layout-item>
+                <lightning-layout-item size="12" medium-device-size="6" padding="horizontal-small" class="slds-p-vertical_x-small">
+                    <lightning-input-field field-name="Sex__c" required></lightning-input-field>
+                </lightning-layout-item>
+
+                <lightning-layout-item size="12" medium-device-size="6" padding="horizontal-small" class="slds-p-vertical_x-small">
+                    <lightning-input-field field-name="City_of_Residence__c" required></lightning-input-field>
+                </lightning-layout-item>
+                <lightning-layout-item size="12" medium-device-size="6" padding="horizontal-small" class="slds-p-vertical_x-small">
+                    <lightning-input-field field-name="Nationality__c" required></lightning-input-field>
+                </lightning-layout-item>
+
+                <lightning-layout-item size="12" medium-device-size="6" padding="horizontal-small" class="slds-p-vertical_x-small">
+                    <lightning-input-field field-name="Country_of_Residence__c" required></lightning-input-field>
+                </lightning-layout-item>
+                <lightning-layout-item size="12" medium-device-size="6" padding="horizontal-small" class="slds-p-vertical_x-small">
+                    <lightning-input-field field-name="Phone" required></lightning-input-field>
+                </lightning-layout-item>
+
+                <lightning-layout-item size="12" medium-device-size="6" padding="horizontal-small" class="slds-p-vertical_x-small">
+                </lightning-layout-item>
+                <lightning-layout-item size="12" medium-device-size="6" padding="horizontal-small" class="slds-p-vertical_x-small">
+                    <lightning-input-field field-name="Is_WhatsApp_Number__c"></lightning-input-field>
+                </lightning-layout-item>
+            </lightning-layout>
+
+            <div class="section-header">
+                <h2>Academic Information</h2>
+                <hr/>
+            </div>
+
+            <lightning-layout multiple-rows="true" pull-to-boundary="small">
+                <lightning-layout-item size="12" padding="horizontal-small" class="slds-p-vertical_x-small">
+                    <lightning-input-field field-name="High_School_Country__c" required></lightning-input-field>
+                </lightning-layout-item>
+                <lightning-layout-item size="12" padding="horizontal-small" class="slds-p-vertical_x-small">
+                    <lightning-input-field field-name="High_School__c" required></lightning-input-field>
+                </lightning-layout-item>
+                <lightning-layout-item size="12" medium-device-size="6" padding="horizontal-small" class="slds-p-vertical_x-small">
+                    <lightning-input-field field-name="High_School_City__c"></lightning-input-field>
+                </lightning-layout-item>
+                <lightning-layout-item size="12" medium-device-size="6" padding="horizontal-small" class="slds-p-vertical_x-small">
+                    <lightning-input-field field-name="High_School_Name__c"></lightning-input-field>
+                </lightning-layout-item>
+            </lightning-layout>
+
+            <div class="section-header">
+                <h2>ALU Information</h2>
+                <hr/>
+            </div>
+
+            <lightning-layout multiple-rows="true" pull-to-boundary="small">
+                <lightning-layout-item size="12" medium-device-size="6" padding="horizontal-small" class="slds-p-vertical_x-small">
+                    <lightning-input-field field-name="Preferred_Intake__c" required></lightning-input-field>
+                </lightning-layout-item>
+                <lightning-layout-item size="12" medium-device-size="6" padding="horizontal-small" class="slds-p-vertical_x-small">
+                    <lightning-input-field field-name="Preferred_Program__c" required></lightning-input-field>
+                </lightning-layout-item>
+
+                <lightning-layout-item size="12" padding="horizontal-small" class="slds-p-vertical_x-small">
+                    <lightning-input-field field-name="How_Did_You_Hear_About_Us__c" required></lightning-input-field>
+                </lightning-layout-item>
+
+                <lightning-layout-item size="12" padding="horizontal-small" class="slds-p-vertical_x-small">
+                    <lightning-input-field field-name="Fee_Structure_Acknowledged__c"></lightning-input-field>
+                </lightning-layout-item>
+                <lightning-layout-item size="12" padding="horizontal-small" class="slds-p-vertical_x-small">
+                    <lightning-input-field field-name="Privacy_Policy_Agreed__c"></lightning-input-field>
+                </lightning-layout-item>
+                <lightning-layout-item size="12" padding="horizontal-small" class="slds-p-vertical_x-small">
+                    <lightning-input-field field-name="ConsentGiven__c"></lightning-input-field>
+                </lightning-layout-item>
+                <lightning-layout-item size="12" medium-device-size="6" padding="horizontal-small" class="slds-p-vertical_x-small">
+                    <lightning-input-field field-name="Opt_In_ALU_News__c"></lightning-input-field>
+                </lightning-layout-item>
+                <lightning-layout-item size="12" medium-device-size="6" padding="horizontal-small" class="slds-p-vertical_x-small">
+                    <lightning-input-field field-name="Opt_Out_ALU_News__c"></lightning-input-field>
+                </lightning-layout-item>
+            </lightning-layout>
+
+            <div class="submit-row">
+                <button type="submit" class="submit-btn">
+                    Submit <span class="arrow">&rarr;</span>
+                </button>
+            </div>
+        </div>
+    </lightning-record-edit-form>
+</template>

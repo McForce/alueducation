@@ -1,0 +1,17 @@
+<template>
+    <lightning-card title="Contacts" icon-name="standard:contact">
+        <template if:true={contacts.data}>
+            <lightning-datatable
+                key-field="Id"
+                data={contacts.data}
+                columns={columns}
+                hide-checkbox-column>
+            </lightning-datatable>
+        </template>
+        <template if:true={contacts.error}>
+            <p class="slds-p-around_medium slds-text-color_error">
+                Error loading contacts: {contacts.error.body.message}
+            </p>
+        </template>
+    </lightning-card>
+</template>
